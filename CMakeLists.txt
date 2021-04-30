@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(cxxeffect)
 
 # add the executable
-add_library(cxxeffect SHARED
+add_executable(cxxeffect
     src/stream.hpp
     src/stream.cpp
     src/task.hpp

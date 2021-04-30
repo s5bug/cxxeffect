@@ -2,7 +2,7 @@
 #include "stream.hpp"
 #include "task.hpp"
 
-void cat() {
+int main() {
     eff::stream<eff::task, char> in = eff::io::cin<eff::task>(1024);
     eff::pipe<eff::task, char, eff::bot> out = eff::io::cout<eff::task>();
 

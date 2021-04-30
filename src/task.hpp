@@ -86,29 +86,29 @@ namespace eff {
 
         static task<A> pure(A a) {
             const auto inner = std::shared_ptr<raw_task<A>>(new raw_task_pure<A>(a));
-            return task(inner);
+            return task<A>(inner);
         }
         static task<A> error(std::exception error) {
             const auto inner = std::shared_ptr<raw_task<A>>(new raw_task_error<A>(error));
-            return task(inner);
+            return task<A>(inner);
         }
         static task<A> delay(std::function<A ()> thunk) {
             const auto inner = std::shared_ptr<raw_task<A>>(new raw_task_delay<A>(thunk));
-            return task(inner);
+            return task<A>(inner);
         }
 
         template<typename B>
-        task<B> flatMap(std::function<task<B> (A)> f) {
+        task<B> flatMap(std::function<task<B> (A)> f) const {
             const auto inner = std::shared_ptr<raw_task<B>>(new raw_task_flatmap<A, B>(*this, f));
-            return task(inner);
+            return task<B>(inner);
         }
         template<typename B>
-        task<B> map(std::function<B (A)> f) {
+        task<B> map(std::function<B (A)> f) const {
             const auto inner = std::shared_ptr<raw_task<B>>(new raw_task_map<A, B>(*this, f));
-            return task(inner);
+            return task<B>(inner);
         }
 
-        A unsafeRunSync() {
+        A unsafeRunSync() const {
             return internal->unsafeRunSync();
         }
     };
