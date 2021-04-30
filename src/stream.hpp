@@ -65,7 +65,7 @@ namespace eff {
 
         F<std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>>> step() const {
             std::function<std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>> (std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>)> transformStep =
-                [this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
+                [*this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
                     if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult)) {
                         std::pair<std::vector<O>, pull<F, O, R>> p = std::get<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult);
                         std::vector<O> hd = p.first;
@@ -97,7 +97,7 @@ namespace eff {
 
         F<std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>>> step() const {
             std::function<F<std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>>> (std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>)> transformStep =
-                [this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
+                [*this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
                     if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult)) {
                         std::pair<std::vector<O>, pull<F, O, R>> p = std::get<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult);
                         std::vector<O> hd = p.first;
@@ -125,14 +125,14 @@ namespace eff {
 
         F<std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>>> step() const {
             std::function<F<std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>>> (std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)> transformStep =
-                [this](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> stepResult) {
+                [*this](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> stepResult) {
                     if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, top>>>(stepResult)) {
                         std::pair<std::vector<O>, pull<F, O, top>> p = std::get<std::pair<std::vector<O>, pull<F, O, top>>>(stepResult);
                         std::vector<O> hd = p.first;
                         pull<F, O, top> tl = p.second;
                         
                         std::shared_ptr<std::function<pull<F, P, top> (std::size_t)>> go = std::make_shared<std::function<pull<F, P, top> (std::size_t)>>();
-                        *go = [this, hd, tl, go](std::size_t idx) {
+                        *go = [*this, hd, tl, go](std::size_t idx) {
                             if(idx == hd.size()) {
                                 return tl.flatMapOutput(f);
                             } else {
@@ -397,7 +397,7 @@ namespace eff {
                 return *this;
             } else {
                 stream<F, O> chunkStream = stream<F, O>::chunk(chunk);
-                std::function<stream<F, O> ()> thenThis = [this]() { return *this; };
+                std::function<stream<F, O> ()> thenThis = [*this]() { return *this; };
                 return chunkStream.append(thenThis);
             }
         }
@@ -447,7 +447,7 @@ namespace eff {
         }
 
         stream<F, O> repeat() const {
-            std::function<stream<F, O> ()> here = [this]() {
+            std::function<stream<F, O> ()> here = [*this]() {
                 return this->repeat();
             };
             return append(here);
@@ -496,9 +496,11 @@ namespace eff {
                     return result;
                 } else {
                     std::vector<char> cv(chunkSize);
-                    in.read(cv.data(), cv.size());
+                    // TODO: I swear there was a read function that actually played nicely with cin
+                    in.getline(cv.data(), cv.size());
                     std::streamsize newSize = in.gcount();
                     cv.resize(newSize);
+                    cv.push_back('\n');
                     std::optional<std::vector<char>> result = cv;
                     return result;
                 }
