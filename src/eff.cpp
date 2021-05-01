@@ -10,5 +10,5 @@ int main() {
 
     eff::task<eff::top> result = program.compile().drain();
 
-    result.unsafeRunSync();
+    result.unsafeRunAsync().get();
 }

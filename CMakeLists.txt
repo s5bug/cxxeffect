@@ -13,3 +13,5 @@ add_executable(cxxeffect
 
 set_property(TARGET cxxeffect PROPERTY CXX_STANDARD 17)
 
+target_link_libraries(cxxeffect pthread)
+

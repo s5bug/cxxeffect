@@ -2,7 +2,9 @@
 
 #include <exception>
 #include <functional>
+#include <future>
 #include <memory>
+#include <variant>
 
 namespace eff {
 
@@ -13,6 +15,7 @@ namespace eff {
     class raw_task {
         public:
         virtual A unsafeRunSync() const = 0;
+        virtual std::future<A> unsafeRunAsync() const = 0;
     };
 
     template<typename A>
@@ -24,16 +27,9 @@ namespace eff {
         A unsafeRunSync() const {
             return value;
         }
-    };
 
-    template<typename A>
-    class raw_task_error final : public raw_task<A> {
-        std::exception error;
-        public:
-        raw_task_error(std::exception a) : error(a) {}
-
-        A unsafeRunSync() const {
-            throw error;
+        std::future<A> unsafeRunAsync() const {
+            return std::async(std::launch::async, [*this]() { return value; });
         }
     };
 
@@ -45,6 +41,10 @@ namespace eff {
 
         A unsafeRunSync() const {
             return thunk();
+        }
+
+        std::future<A> unsafeRunAsync() const {
+            return std::async(std::launch::async, thunk);
         }
     };
 
@@ -61,6 +61,17 @@ namespace eff {
             B vb = tb.unsafeRunSync();
             return vb;
         }
+
+        std::future<B> unsafeRunAsync() const {
+            std::future<A> fa = ta.unsafeRunAsync();
+            std::future<B> fb = std::async(std::launch::async, [*this](std::future<A>&& fa) {
+                A a = fa.get();
+                task<B> t = f(a);
+                std::future<B> fb = t.unsafeRunAsync();
+                return fb.get();
+            }, std::move(fa));
+            return fb;
+        }
     };
 
     template<typename A, typename B>
@@ -75,6 +86,15 @@ namespace eff {
             B vb = f(va);
             return vb;
         }
+
+        std::future<B> unsafeRunAsync() const {
+            std::future<A> fa = ta.unsafeRunAsync();
+            std::future<B> fb = std::async(std::launch::async, [*this](std::future<A>&& fa) {
+                A a = fa.get();
+                return f(a);
+            }, std::move(fa));
+            return fb;
+        };
     };
 
     template<typename A>
@@ -86,10 +106,6 @@ namespace eff {
 
         static task<A> pure(A a) {
             const auto inner = std::shared_ptr<raw_task<A>>(new raw_task_pure<A>(a));
-            return task<A>(inner);
-        }
-        static task<A> error(std::exception error) {
-            const auto inner = std::shared_ptr<raw_task<A>>(new raw_task_error<A>(error));
             return task<A>(inner);
         }
         static task<A> delay(std::function<A ()> thunk) {
@@ -110,6 +126,10 @@ namespace eff {
 
         A unsafeRunSync() const {
             return internal->unsafeRunSync();
+        }
+
+        std::future<A> unsafeRunAsync() const {
+            return internal->unsafeRunAsync();
         }
     };
 
