@@ -9,6 +9,9 @@ build/
 # See: https://github.com/MaskRay/ccls
 .ccls-cache/
 
+# File created by visual studio code
+.vscode/
+
 # Created by https://www.toptal.com/developers/gitignore/api/cmake,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=cmake,c++
 
