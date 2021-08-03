@@ -1,6 +1,13 @@
-# We can honestly just ignore the entire build directory
 
+# We can honestly just ignore the entire build directory
 build/
+
+# This directory can be ignored too. It contains files for ccls,
+# Which is a C++ language server. It's open source, really fast,
+# and it supports C++20. It also supports semantic highlighting,
+# which really helps me concentrate and reduces distraction for me
+# See: https://github.com/MaskRay/ccls
+.ccls-cache/
 
 # Created by https://www.toptal.com/developers/gitignore/api/cmake,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=cmake,c++
