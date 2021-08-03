@@ -39,7 +39,7 @@ namespace eff {
                 std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> v {r};
                 return v;
             };
-            return fr.template map<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>>(wrapLeft);
+            return fr.map(wrapLeft);
         }
     };
 
