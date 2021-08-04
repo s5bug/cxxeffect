@@ -37,7 +37,6 @@ target_include_directories(
 # Provides install target, so users can install the library on their system
 # if they like
 
-option(CXXEFFECT_Install "Install CMake targets during install step." ON)
 install(
     DIRECTORY ${PROJECT_SOURCE_DIR}/include/
     DESTINATION include
