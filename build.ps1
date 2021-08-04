@@ -10,5 +10,5 @@ New-Item -Path . -Name "build" -ItemType "directory" -ErrorAction SilentlyContin
 Set-Location -Path "build"
 
 # Build project
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build .
