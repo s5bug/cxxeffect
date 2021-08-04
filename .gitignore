@@ -1,3 +1,6 @@
+# We can honestly just ignore the entire build directory
+
+build/
 
 # We can honestly just ignore the entire build directory
 build/
