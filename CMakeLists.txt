@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 # That means it's best implemented as header-only without the need for cpp files
 add_library(cxxeffect INTERFACE)
 
+set_property(TARGET cxxeffect PROPERTY CXX_STANDARD 20)
+
 # boilerplate compiler options to have support for C++20. We can remove if you don't want them.
 if (MSVC)
     target_compile_options(cxxeffect INTERFACE "/std:c++latest" "/EHsc")
