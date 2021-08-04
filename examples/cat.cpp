@@ -1,6 +1,5 @@
-#include "eff.hpp"
-#include "stream.hpp"
-#include "task.hpp"
+#include <cxxeffect/stream.hpp>
+#include <cxxeffect/task.hpp>
 
 int main() {
     eff::stream<eff::task, char> in = eff::io::cin<eff::task>(1024);
