@@ -7,6 +7,30 @@ namespace eff {
     // This class represents a task that can be executed synchronously or
     // asynchronously, and produces a value
     template <class T>
+    class task;
+
+    namespace _internal {
+        template <class T>
+        struct is_task : std::false_type {};
+        template <class T>
+        struct is_task<task<T>> : std::true_type {};
+
+        template <class T>
+        constexpr bool is_task_v = is_task<T>::value;
+    }
+
+    // Concept that matches task<T> forall. T
+    template <class Task>
+    concept is_task = _internal::is_task_v<Task>;
+
+    // Concept that matches function that matches all F such that
+    // F satisfies F: T -> task<T2> for some T2
+    template <class F, class T>
+    concept task_bind = requires(F func, T value) {
+        { func(value) } -> is_task;
+    };
+
+    template <class T>
     class task {
         // An internal representation of the task itself
         std::function<T()> thunk;
@@ -44,9 +68,8 @@ namespace eff {
 
         // Takes a function which takes an input of type T, and produces a task
         // of type U. This is Equivilant to task T -> (T -> task U) -> task U
-        template <class F>
-        auto flatMap(F func) const
-            -> task<typename std::invoke_result_t<F, T>::type> {
+        template <task_bind<T> F>
+        auto flatMap(F func) const -> std::invoke_result_t<F, T> {
             return {
                 [f = func, ta = *this]() {
                     return f(ta.unsafeRunSync()).unsafeRunSync();
