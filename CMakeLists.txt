@@ -13,16 +13,17 @@ set_property(TARGET cxxeffect PROPERTY CXX_STANDARD_REQUIRED 20)
 
 target_compile_features(cxxeffect INTERFACE cxx_std_20)
 
-# boilerplate compiler options to have support for C++20. We can remove if you don't want them.
+# The /EHa flag enables standard C++ stack unwinding
+# See: https://docs.microsoft.com/en-us/cpp/build/reference/eh-exception-handling-model?view=msvc-160
 if (MSVC)
-    target_compile_options(cxxeffect INTERFACE "/EHsc")
+    target_compile_options(cxxeffect INTERFACE "/EHa")
 endif()
 
-
+# Enables GCC support for coroutines (these are standard C++ now but GCC still
+# requires a flag for them)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     target_compile_options(cxxeffect INTERFACE "-fcoroutines")
 endif()
-
 
 target_compile_definitions(cxxeffect INTERFACE)
 
@@ -51,9 +52,9 @@ find_package(Threads REQUIRED)
 # Then we want to build files in the examples directory (which contains the cat)
 # This will compile every file in the examples directory as a separate program
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    file(GLOB all_tests "examples/*.cpp")
+    file(GLOB all_examples "examples/*.cpp")
 
-    foreach(file_name ${all_tests})
+    foreach(file_name ${all_examples})
         get_filename_component(executable_name ${file_name} NAME_WE)
         add_executable("${executable_name}" "${file_name}")
         target_link_libraries("${executable_name}" PRIVATE cxxeffect)
