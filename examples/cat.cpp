@@ -1,4 +1,3 @@
-// #include <cxxeffect/eff.hpp>
 #include <cxxeffect/stream.hpp>
 #include <cxxeffect/task.hpp>
 
