@@ -9,7 +9,7 @@
 #include <variant>
 #include <vector>
 
-#include "eff.hpp"
+#include <cxxeffect/eff.hpp>
 
 namespace eff {
 
@@ -130,7 +130,7 @@ namespace eff {
                         std::pair<std::vector<O>, pull<F, O, top>> p = std::get<std::pair<std::vector<O>, pull<F, O, top>>>(stepResult);
                         std::vector<O> hd = p.first;
                         pull<F, O, top> tl = p.second;
-                        
+
                         std::shared_ptr<std::function<pull<F, P, top> (std::size_t)>> go = std::make_shared<std::function<pull<F, P, top> (std::size_t)>>();
                         *go = [*this, hd, tl, go](std::size_t idx) {
                             if(idx == hd.size()) {
@@ -267,7 +267,7 @@ namespace eff {
                             if(takeFailure) idx++;
 
                             std::vector<O> toEmit(hd.begin(), hd.begin() + idx);
-                            
+
                             // TODO: emit tail pull
                             return pull<F, O, top>::output(toEmit);
                         }
@@ -309,7 +309,7 @@ namespace eff {
         F<B> foldChunks(B init, std::function<B (B, std::vector<O>)> f) {
             std::shared_ptr<std::function<F<B> (B, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)>> loop =
                 std::make_shared<std::function<F<B> (B, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)>>();
-            
+
             *loop = [loop, f](B bstep, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> step) {
                 if(std::holds_alternative<top>(step)) {
                     F<B> done = F<B>::pure(bstep);
@@ -326,7 +326,7 @@ namespace eff {
                         [loop, newBstep](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> nextStep) {
                             return (*loop)(newBstep, nextStep);
                         };
-                    
+
                     return newStep.flatMap(next);
                 }
             };
@@ -431,7 +431,7 @@ namespace eff {
         stream<F, P> map(std::function<P (O)> f) const {
             std::function<std::vector<P> (std::vector<O>)> chunkMapper = [f](std::vector<O> v) {
                 std::vector<P> r(v.size());
-                
+
                 for(std::size_t i = 0; i < v.size(); i++) {
                     r[i] = f(v[i]);
                 }
@@ -522,7 +522,7 @@ namespace eff {
                 return stream<F, char>::chunk(v);
             };
             stream<F, char> result = nonEmptyChunks.flatMap(emitVectorChunks);
-            
+
             return result;
         }
 
