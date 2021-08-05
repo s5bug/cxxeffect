@@ -7,8 +7,10 @@
 
 namespace eff {
 
-    using top = std::monostate;
-    union bot {};
+    // Moved top and bot to stream.hpp and pull.hpp respectively
+    // Is there any difference between them?
+    // Theyre both empty types
+    // Can this file be deleted?
 
     template<typename A>
     using pure = A;
