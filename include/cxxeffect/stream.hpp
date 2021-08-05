@@ -19,6 +19,13 @@ namespace eff {
     //
     // That is, a `pull` on some effect type `f` represents a computation that
     // either returns a terminating result, or the next step of a stream.
+    //
+    // `pull` should be considered a "servant" of `stream`. It should be used
+    // only in cases where an operation is not purely expressable with `stream`
+    // or when it is definitively more performant to express with `pull`. This
+    // is because `pull` is much less powerful when `R` != `top`; you cannot
+    // assume that any other `R` will have only one possible value, which means
+    // there are some functions you cannot write.
     template<template<typename> typename F, typename O, typename R>
     class pull;
 
