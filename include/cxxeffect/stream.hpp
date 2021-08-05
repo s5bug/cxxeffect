@@ -35,11 +35,9 @@ namespace eff {
         raw_pull_eval(F<R> a) : fr(a) {}
 
         F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> step() const {
-            std::function<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> (R)> wrapLeft = [](R r) {
-                std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> v {r};
-                return v;
-            };
-            return fr.map(wrapLeft);
+            return fr.map([](R r) {
+                return std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>{r};
+            });
         }
     };
 
