@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.10)
 
 project(cxxeffect CXX)
 
+# Register dependencies
+add_subdirectory(modules/conduit)
+
 # We want to export compile commands b/c it's useful for ccls
 set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
@@ -12,6 +15,8 @@ add_library(cxxeffect INTERFACE)
 set_property(TARGET cxxeffect PROPERTY CXX_STANDARD_REQUIRED 20)
 
 target_compile_features(cxxeffect INTERFACE cxx_std_20)
+
+target_link_libraries(cxxeffect INTERFACE conduit)
 
 # The /EHa flag enables standard C++ stack unwinding
 # See: https://docs.microsoft.com/en-us/cpp/build/reference/eh-exception-handling-model?view=msvc-160
