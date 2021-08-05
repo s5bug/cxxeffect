@@ -12,30 +12,55 @@
 #include <cxxeffect/eff.hpp>
 
 namespace eff {
-    // Questions: (to-do)
-    // What is pull?
-    // What is stream?
-    // What is pipe?
-    // What do they do, and what is their interface that they implement?
-
+    // `pull` represents some step in a stream. A `pull` looks like
+    //
+    //    type Pull f o r =
+    //      f ({ result : r } | { head : Vector o, tail : Pull f o r })
+    //
+    // That is, a `pull` on some effect type `f` represents a computation that
+    // either returns a terminating result, or the next step of a stream.
     template<template<typename> typename F, typename O, typename R>
     class pull;
 
+    // This is the pair of the head chunk of output elements and the next pull step.
+    // Might be called `pull_cons_t`.
     template <template <typename> class F, class O, class R>
     using pull_pair_t = std::pair<std::vector<O>, pull<F, O, R>>;
 
+    // The result of a pull will either be a termination token (R) or a concatenation
+    // of some output and a next step (pull_pair_t)
     template <template <typename> class F, class O, class R>
     using pull_variant_t = std::variant<R, pull_pair_t<F, O, R>>;
 
+    // And the internals of a pull are an effectful result
     template <template <typename> class F, class O, class R>
     using pull_task_t = F<pull_variant_t<F, O, R>>;
 
+    // `stream<F, O>` is equivalent to `pull<F, O, top>`. That is, a stream
+    // is a pull where the termination token does not store any meaningful
+    // data. The difference between `stream` and `pull` is that `stream` is a
+    // monad over the output element types, while `pull` is a monad over the
+    // result token type. `stream` is much more powerful and able to express
+    // more transformations correctly due to `top` being a "terminal object".
     template<template<typename> typename F, typename O>
     class stream;
 
+    // `pipe` isn't useful. It can be replaced with some invoke_result_t
+    // wizardry instead.
+    //
+    // The gist is that you might have something like
+    //
+    //   pipe<F, uint8_t, bot> writeBytes(some async file handle)
+    //
+    // and you could do such as `myStreamOfBytes.through(writeBytes(myFileHandle))`
+    // The examples page of https://fs2.io does a much better job at showing how
+    // beautiful this can end up being.
     template<template<typename> typename F, typename A, typename B>
     using pipe = std::function<stream<F, B> (stream<F, A>)>;
 
+    // I believe that raw_pull can be refactored into a singular
+    // class much like task was. Where it just has a singular
+    // `pull_task_t` field. But I'm not sure about that.
     template<template<typename> typename F, typename O, typename R>
     class raw_pull {
         public:
