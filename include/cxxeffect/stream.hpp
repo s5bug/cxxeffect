@@ -12,6 +12,12 @@
 #include <cxxeffect/eff.hpp>
 
 namespace eff {
+    // Questions: (to-do)
+    // What is pull?
+    // What is stream?
+    // What is pipe?
+    // What do they do, and what is their interface that they implement?
+
     template<template<typename> typename F, typename O, typename R>
     class pull;
 
