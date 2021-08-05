@@ -7,21 +7,27 @@
 
 namespace eff {
     using std::coroutine_handle;
+    using std::suspend_never;
+    using std::suspend_always;
+    using std::invoke_result_t;
+    using conduit::hard_awaitable;
+    using conduit::invocable;
+
 
     // A Task is an awaitable that has a return type specified by return_t
     template <class Task>
-    concept task_type = conduit::hard_awaitable<Task, typename Task::return_t>;
+    concept task_type = hard_awaitable<Task, typename Task::return_t>;
 
     // Task which doesn't suspend and simply returns a value it stores
     template <class Ret>
-    struct pure_task : std::suspend_never {
+    struct pure_task : suspend_never {
         // A pure task has the value ready immediately, so it
-        // never needs to suspend. We use std::suspend_never as a mixin
+        // never needs to suspend. We use suspend_never as a mixin
         using return_t = Ret;
         Ret value;
 
-        using std::suspend_never::await_ready;
-        using std::suspend_never::await_suspend;
+        using suspend_never::await_ready;
+        using suspend_never::await_suspend;
 
         return_t await_resume() const {
             return value;
@@ -29,13 +35,13 @@ namespace eff {
     };
 
     // Task that obtains it's result from a function invocation
-    template <std::invocable Func>
-    struct lazy_task : std::suspend_never {
-        using return_t = std::invoke_result_t<Func>;
+    template <invocable Func>
+    struct lazy_task : suspend_never {
+        using return_t = invoke_result_t<Func>;
         Func func;
 
-        using std::suspend_never::await_ready;
-        using std::suspend_never::await_suspend;
+        using suspend_never::await_ready;
+        using suspend_never::await_suspend;
 
         return_t await_resume() const {
             return func();
@@ -47,11 +53,11 @@ namespace eff {
     template <
         task_type Task,
         // Specifies that Func must accept an input of type Task::return_t
-        std::invocable<typename Task::return_t> Func>
+        invocable<typename Task::return_t> Func>
     struct map_task : Task {
         Func func;
 
-        using return_t = std::invoke_result_t<Func, typename Task::return_t>;
+        using return_t = invoke_result_t<Func, typename Task::return_t>;
         using Task::await_ready;
         using Task::await_suspend;
 
@@ -61,9 +67,9 @@ namespace eff {
     };
     template <
         task_type TaskA,
-        std::invocable<typename TaskA::return_t> Func>
+        invocable<typename TaskA::return_t> Func>
     struct flatmap_task {
-        using TaskB = std::invoke_result_t<Func, typename TaskA::return_t>;
+        using TaskB = invoke_result_t<Func, typename TaskA::return_t>;
 
         static_assert(task_type<TaskB>, "The function given to flatmap needs to return a task");
         // return_t is the return type of the task returned by func
@@ -158,7 +164,7 @@ namespace eff {
 
         // Maps a function over a task
         template <class F>
-        auto map(F func) const -> task<std::invoke_result_t<F, T>> {
+        auto map(F func) const -> task<invoke_result_t<F, T>> {
             return {
                     [f = std::move(func), input = *this]() {
                     return f(input.unsafeRunSync());
@@ -169,7 +175,7 @@ namespace eff {
         // Takes a function which takes an input of type T, and produces a task
         // of type U. This is Equivilant to task T -> (T -> task U) -> task U
         template <task_bind<T> F>
-        auto flatMap(F func) const -> std::invoke_result_t<F, T> {
+        auto flatMap(F func) const -> invoke_result_t<F, T> {
             return {
                 [f = func, ta = *this]() {
                     return f(ta.unsafeRunSync()).unsafeRunSync();
