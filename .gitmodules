@@ -1,0 +1,3 @@
+[submodule "modules/conduit"]
+	path = modules/conduit
+	url = https://github.com/codeinred/conduit.git
