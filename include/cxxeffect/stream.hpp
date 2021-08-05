@@ -12,9 +12,17 @@
 #include <cxxeffect/eff.hpp>
 
 namespace eff {
-
     template<template<typename> typename F, typename O, typename R>
     class pull;
+
+    template <template <typename> class F, class O, class R>
+    using pull_pair_t = std::pair<std::vector<O>, pull<F, O, R>>;
+
+    template <template <typename> class F, class O, class R>
+    using pull_variant_t = std::variant<R, pull_pair_t<F, O, R>>;
+
+    template <template <typename> class F, class O, class R>
+    using pull_task_t = F<pull_variant_t<F, O, R>>;
 
     template<template<typename> typename F, typename O>
     class stream;
@@ -25,7 +33,7 @@ namespace eff {
     template<template<typename> typename F, typename O, typename R>
     class raw_pull {
         public:
-        virtual F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> step() const = 0;
+        virtual pull_task_t<F, O, R> step() const = 0;
     };
 
     template<template<typename> typename F, typename O, typename R>
@@ -34,12 +42,10 @@ namespace eff {
         public:
         raw_pull_eval(F<R> a) : fr(a) {}
 
-        F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> step() const {
-            std::function<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> (R)> wrapLeft = [](R r) {
-                std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> v {r};
-                return v;
-            };
-            return fr.map(wrapLeft);
+        pull_task_t<F, O, R> step() const {
+            return fr.map([](R r) {
+                return pull_variant_t<F, O, R>{r};
+            });
         }
     };
 
@@ -49,10 +55,12 @@ namespace eff {
         public:
         raw_pull_output(std::vector<O> a) : chunk(a) {}
 
-        F<std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>> step() const {
-            std::pair<std::vector<O>, pull<F, O, top>> pair = std::make_pair(chunk, pull<F, O, top>::done());
-            std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> v = pair;
-            return F<std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>>::pure(v);
+        pull_task_t<F, O, top> step() const {
+            return pull_task_t<F, O, top>::pure(
+                pull_variant_t<F, O, top> {
+                    std::pair(chunk, pull<F, O, top>::done())
+                }
+            );
         }
     };
 
@@ -63,27 +71,27 @@ namespace eff {
         public:
         raw_pull_map_output(pull<F, O, R> a, std::function<std::vector<P> (std::vector<O>)> b) : that(a), f(b) {}
 
-        F<std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>>> step() const {
-            std::function<std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>> (std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>)> transformStep =
-                [*this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
-                    if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult)) {
-                        std::pair<std::vector<O>, pull<F, O, R>> p = std::get<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult);
+        pull_task_t<F, P, R> step() const {
+            std::function<pull_variant_t<F, P, R> (pull_variant_t<F, O, R>)> transformStep =
+                [*this](pull_variant_t<F, O, R> stepResult) {
+                    if(std::holds_alternative<pull_pair_t<F, O, R>>(stepResult)) {
+                        pull_pair_t<F, O, R> p = std::get<pull_pair_t<F, O, R>>(stepResult);
                         std::vector<O> hd = p.first;
                         pull<F, O, R> tl = p.second;
 
                         std::vector<P> nhd = f(hd);
                         pull<F, P, R> ntl = tl.mapOutput(f);
-                        std::pair<std::vector<P>, pull<F, P, R>> np = std::make_pair(nhd, ntl);
+                        pull_pair_t<F, P, R> np = std::make_pair(nhd, ntl);
 
-                        std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>> result = np;
+                        pull_variant_t<F, P, R> result = np;
                         return result;
                     } else {
                         R r = std::get<R>(stepResult);
-                        std::variant<R, std::pair<std::vector<P>, pull<F, P, R>>> result = r;
+                        pull_variant_t<F, P, R> result = r;
                         return result;
                     }
                 };
-            F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> thatStep = that.step();
+            pull_task_t<F, O, R> thatStep = that.step();
             return thatStep.map(transformStep);
         }
     };
@@ -95,23 +103,23 @@ namespace eff {
         public:
         raw_pull_flatmap(pull<F, O, R> a, std::function<pull<F, O, S> (R)> b) : that(a), f(b) {}
 
-        F<std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>>> step() const {
-            std::function<F<std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>>> (std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>)> transformStep =
-                [*this](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> stepResult) {
-                    if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult)) {
-                        std::pair<std::vector<O>, pull<F, O, R>> p = std::get<std::pair<std::vector<O>, pull<F, O, R>>>(stepResult);
+        pull_task_t<F, O, S> step() const {
+            std::function<pull_task_t<F, O, S> (pull_variant_t<F, O, R>)> transformStep =
+                [*this](pull_variant_t<F, O, R> stepResult) {
+                    if(std::holds_alternative<pull_pair_t<F, O, R>>(stepResult)) {
+                        pull_pair_t<F, O, R> p = std::get<pull_pair_t<F, O, R>>(stepResult);
                         std::vector<O> hd = p.first;
                         pull<F, O, R> tl = p.second;
 
-                        std::pair<std::vector<O>, pull<F, O, S>> np = std::make_pair(hd, tl.flatMap(f));
-                        std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>> v = np;
-                        return F<std::variant<S, std::pair<std::vector<O>, pull<F, O, S>>>>::pure(v);
+                        pull_pair_t<F, O, S> np = std::make_pair(hd, tl.flatMap(f));
+                        pull_variant_t<F, O, S> v = np;
+                        return pull_task_t<F, O, S>::pure(v);
                     } else {
                         R r = std::get<R>(stepResult);
                         return f(r).step();
                     }
                 };
-            F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> thatStep = that.step();
+            pull_task_t<F, O, R> thatStep = that.step();
             return thatStep.flatMap(transformStep);
         }
     };
@@ -123,11 +131,11 @@ namespace eff {
         public:
         raw_pull_flatmap_output(pull<F, O, top> a, std::function<pull<F, P, top> (O)> b) : that(a), f(b) {}
 
-        F<std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>>> step() const {
-            std::function<F<std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>>> (std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)> transformStep =
-                [*this](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> stepResult) {
-                    if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, top>>>(stepResult)) {
-                        std::pair<std::vector<O>, pull<F, O, top>> p = std::get<std::pair<std::vector<O>, pull<F, O, top>>>(stepResult);
+        pull_task_t<F, P, top> step() const {
+            std::function<pull_task_t<F, P, top> (pull_variant_t<F, O, top>)> transformStep =
+                [*this](pull_variant_t<F, O, top> stepResult) {
+                    if(std::holds_alternative<pull_pair_t<F, O, top>>(stepResult)) {
+                        pull_pair_t<F, O, top> p = std::get<pull_pair_t<F, O, top>>(stepResult);
                         std::vector<O> hd = p.first;
                         pull<F, O, top> tl = p.second;
 
@@ -146,11 +154,11 @@ namespace eff {
                         std::function<pull<F, P, top> (std::size_t)> goI = *go;
                         return goI(0).step();
                     } else {
-                        std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>> result = std::get<top>(stepResult);
-                        return F<std::variant<top, std::pair<std::vector<P>, pull<F, P, top>>>>::pure(result);
+                        pull_variant_t<F, P, top> result = std::get<top>(stepResult);
+                        return pull_task_t<F, P, top>::pure(result);
                     }
                 };
-            F<std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>> thatStep = that.step();
+            pull_task_t<F, O, top> thatStep = that.step();
             return thatStep.flatMap(transformStep);
         }
     };
@@ -247,10 +255,10 @@ namespace eff {
 
         // TODO: return a pull<F, O, ???<pull<F, O, ???>>> for the rest of the stream
         pull<F, O, top> takeWhile(std::function<bool (O)> predicate, bool takeFailure = false) const {
-            std::function<pull<F, O, top> (std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>)> transformUc =
-                [predicate, takeFailure](std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>> step) {
-                    if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, R>>>(step)) {
-                        std::pair<std::vector<O>, pull<F, O, R>> p = std::get<std::pair<std::vector<O>, pull<F, O, R>>>(step);
+            std::function<pull<F, O, top> (pull_variant_t<F, O, R>)> transformUc =
+                [predicate, takeFailure](pull_variant_t<F, O, R> step) {
+                    if(std::holds_alternative<pull_pair_t<F, O, R>>(step)) {
+                        pull_pair_t<F, O, R> p = std::get<pull_pair_t<F, O, R>>(step);
                         std::vector<O> hd = p.first;
                         pull<F, O, R> tl = p.second;
 
@@ -276,7 +284,7 @@ namespace eff {
                         return result;
                     }
                 };
-            pull<F, O, std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> uc = uncons<O>();
+            pull<F, O, pull_variant_t<F, O, R>> uc = uncons<O>();
             return uc.flatMap(transformUc);
         }
 
@@ -285,11 +293,11 @@ namespace eff {
         }
 
         template<typename P>
-        pull<F, P, std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> uncons() const {
-            return pull<F, P, std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>>::eval(step());
+        pull<F, P, pull_variant_t<F, O, R>> uncons() const {
+            return pull<F, P, pull_variant_t<F, O, R>>::eval(step());
         }
 
-        F<std::variant<R, std::pair<std::vector<O>, pull<F, O, R>>>> step() const {
+        pull_task_t<F, O, R> step() const {
             return internal->step();
         }
     };
@@ -307,23 +315,23 @@ namespace eff {
 
         template<typename B>
         F<B> foldChunks(B init, std::function<B (B, std::vector<O>)> f) {
-            std::shared_ptr<std::function<F<B> (B, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)>> loop =
-                std::make_shared<std::function<F<B> (B, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)>>();
+            std::shared_ptr<std::function<F<B> (B, pull_variant_t<F, O, top>)>> loop =
+                std::make_shared<std::function<F<B> (B, pull_variant_t<F, O, top>)>>();
 
-            *loop = [loop, f](B bstep, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> step) {
+            *loop = [loop, f](B bstep, pull_variant_t<F, O, top> step) {
                 if(std::holds_alternative<top>(step)) {
                     F<B> done = F<B>::pure(bstep);
                     return done;
                 } else {
-                    std::pair<std::vector<O>, pull<F, O, top>> p = std::get<std::pair<std::vector<O>, pull<F, O, top>>>(step);
+                    pull_pair_t<F, O, top> p = std::get<pull_pair_t<F, O, top>>(step);
                     std::vector<O> hd = p.first;
                     pull<F, O, top> tl = p.second;
 
                     B newBstep = f(bstep, hd);
-                    F<std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>> newStep = tl.step();
+                    pull_task_t<F, O, top> newStep = tl.step();
 
-                    std::function<F<B> (std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)> next =
-                        [loop, newBstep](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> nextStep) {
+                    std::function<F<B> (pull_variant_t<F, O, top>)> next =
+                        [loop, newBstep](pull_variant_t<F, O, top> nextStep) {
                             return (*loop)(newBstep, nextStep);
                         };
 
@@ -331,13 +339,13 @@ namespace eff {
                 }
             };
 
-            std::function<F<B> (std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)> go =
-                [loop, init](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> initialStep) {
+            std::function<F<B> (pull_variant_t<F, O, top>)> go =
+                [loop, init](pull_variant_t<F, O, top> initialStep) {
                     return (*loop)(init, initialStep);
                 };
 
             pull<F, O, top> usPull = internal.toPull();
-            F<std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>> usStep = usPull.step();
+            pull_task_t<F, O, top> usStep = usPull.step();
             return usStep.flatMap(go);
         }
     };
@@ -464,18 +472,18 @@ namespace eff {
 
         template<typename P>
         pull<F, P, std::optional<std::pair<std::vector<O>, stream<F, O>>>> uncons() const {
-            std::function<std::optional<std::pair<std::vector<O>, stream<F, O>>> (std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>)> stitch =
-                [](std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>> pullUncons) {
-                    if(std::holds_alternative<std::pair<std::vector<O>, pull<F, O, top>>>(pullUncons)) {
-                        std::pair<std::vector<O>, pull<F, O, top>> p = std::get<std::pair<std::vector<O>, pull<F, O, top>>>(pullUncons);
-                        std::optional<std::pair<std::vector<O>, pull<F, O, top>>> result = p;
+            std::function<std::optional<std::pair<std::vector<O>, stream<F, O>>> (pull_variant_t<F, O, top>)> stitch =
+                [](pull_variant_t<F, O, top> pullUncons) {
+                    if(std::holds_alternative<pull_pair_t<F, O, top>>(pullUncons)) {
+                        pull_pair_t<F, O, top> p = std::get<pull_pair_t<F, O, top>>(pullUncons);
+                        std::optional<pull_pair_t<F, O, top>> result = p;
                         return p;
                     } else {
-                        std::optional<std::pair<std::vector<O>, pull<F, O, top>>> result = std::nullopt;
+                        std::optional<pull_pair_t<F, O, top>> result = std::nullopt;
                         return result;
                     }
                 };
-            pull<F, P, std::variant<top, std::pair<std::vector<O>, pull<F, O, top>>>> pullUncons = underlying.uncons();
+            pull<F, P, pull_variant_t<F, O, top>> pullUncons = underlying.uncons();
             pull<F, P, std::optional<std::pair<std::vector<O>, stream<F, O>>>> result = pullUncons.map(stitch);
             return result;
         }
