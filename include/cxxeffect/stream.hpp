@@ -56,9 +56,11 @@ namespace eff {
         raw_pull_output(std::vector<O> a) : chunk(a) {}
 
         pull_task_t<F, O, top> step() const {
-            pull_pair_t<F, O, top> pair = std::make_pair(chunk, pull<F, O, top>::done());
-            pull_variant_t<F, O, top> v = pair;
-            return pull_task_t<F, O, top>::pure(v);
+            return pull_task_t<F, O, top>::pure(
+                pull_variant_t<F, O, top> {
+                    std::pair(chunk, pull<F, O, top>::done())
+                }
+            );
         }
     };
 
