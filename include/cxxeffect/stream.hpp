@@ -132,8 +132,9 @@ namespace eff {
                         pull<F, O, top> tl = p.second;
 
                         std::shared_ptr<std::function<pull<F, P, top> (std::size_t)>> go = std::make_shared<std::function<pull<F, P, top> (std::size_t)>>();
-                        *go = [*this, hd, tl, go](std::size_t idx) {
+                        *go = [*this, hd, tl, go](std::size_t idx) mutable {
                             if(idx == hd.size()) {
+                                go.reset();
                                 return tl.flatMapOutput(f);
                             } else {
                                 std::function<pull<F, P, top> (std::size_t)> goI = *go;
