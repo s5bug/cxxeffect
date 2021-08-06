@@ -14,12 +14,15 @@ namespace eff::tasks {
     using conduit::invocable;
     using conduit::same_as;
 
+    template <class Task>
+    using task_result_t = typename Task::result_t;
+
     // Obtains the result of mapping Func onto task
     template <class Func, class Task>
-    using map_result_t = std::invoke_result_t<Func, typename Task::return_t>;
+    using map_result_t = std::invoke_result_t<Func, task_result_t<Task>>;
 
     template <class Func, class Task>
-    using flatmap_result_t = typename map_result_t<Func, Task>::return_t;
+    using flatmap_result_t = typename map_result_t<Func, Task>::result_t;
 
     // Tasks have a task category that determines whether they're immediate,
     // or asynchronousy. If a task's type can't be determined at compile time,
@@ -32,21 +35,21 @@ namespace eff::tasks {
         async
     };
 
-    // A Task is an awaitable that has a return type specified by return_t
+    // A Task is an awaitable that has a return type specified by result_t
     template <class Task>
-    concept task_type = hard_awaitable<Task, typename Task::return_t> && requires() {
+    concept task_type = hard_awaitable<Task, task_result_t<Task>> && requires() {
         { Task::task_category } -> same_as<category_t>;
     };
 
     // Satisfied by functions that can be map`d on a given task
     template <class Func, class Task>
-    concept mappable = invocable<Func, typename Task::return_t>;
+    concept mappable = invocable<Func, task_result_t<Task>>;
 
     // Satisfied by functions that can be flatmap'd on a given task
     template <class Func, class Task>
     concept flatmappable =
         task_type<Task> &&
-        requires(typename Task::return_t input, Func f) {
+        requires(task_result_t<Task> input, Func f) {
         { f(input) } -> task_type;
     };
 
@@ -64,7 +67,7 @@ namespace eff::tasks {
     template <class Ret>
     struct pure_task {
 
-        using return_t = Ret;
+        using result_t = Ret;
 
         Ret value;
 
@@ -75,7 +78,7 @@ namespace eff::tasks {
         // await_suspend is a no-op
         constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
-        return_t await_resume() const {
+        result_t await_resume() const {
             return value;
         }
     };
@@ -88,7 +91,7 @@ namespace eff::tasks {
         Func func;
 
         // The return type of a lazy task is the same as the type returned by func()
-        using return_t = invoke_result_t<Func>;
+        using result_t = invoke_result_t<Func>;
 
         // It's an immediate task since control is never transferred
         constexpr static auto task_category = category_t::immediate;
@@ -97,7 +100,7 @@ namespace eff::tasks {
         // await_suspend is a no-op
         constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
-        return_t await_resume() const {
+        result_t await_resume() const {
             return func();
         }
     };
@@ -113,7 +116,7 @@ namespace eff::tasks {
     struct map_task : Task {
         Func func;
 
-        using return_t = map_result_t<Func, Task>;
+        using result_t = map_result_t<Func, Task>;
         using Task::await_ready;
         using Task::await_suspend;
 
@@ -121,11 +124,11 @@ namespace eff::tasks {
         // the category of the task it's derived from
         using Task::task_category;
 
-        return_t await_resume() const {
+        result_t await_resume() const {
             return func(Task::await_resume());
         }
     };
-    template <task_type Task, invocable<typename Task::return_t> Func>
+    template <task_type Task, invocable<task_result_t<Task>> Func>
     map_task(Task task, Func func) -> map_task<Task, Func>;
 
     template <
@@ -144,26 +147,26 @@ namespace eff::tasks {
         constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
         using TaskB = map_result_t<Func, TaskA>;
-        using return_t = flatmap_result_t<Func, TaskA>;
+        using result_t = flatmap_result_t<Func, TaskA>;
         TaskA taskA;
         Func func;
 
         // Because it's an immediate task, we can obtain the value directly
         // simply by calling await_resume on taskA, passing that to func to
         // generate taskB, and then calling await_resume() on task B
-        return_t await_resume() const {
+        result_t await_resume() const {
             return func(taskA.await_resume()).await_resume();
         }
     };
     template <class TaskA, class Func>
     struct flatmap_impl<TaskA, Func, category_t::async> {
         constexpr static category_t task_category = category_t::async;
-        using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
-        using return_t = typename TaskB::return_t;
+        using TaskB = std::invoke_result_t<Func, task_result_t<TaskA>>;
+        using result_t = task_result_t<TaskB>;
         TaskA taskA;
         Func func;
 
-        return_t result;
+        result_t result;
         // We always suspend the calling coroutine for async tasks
         constexpr bool await_ready() const noexcept {
             return false;
@@ -177,7 +180,7 @@ namespace eff::tasks {
         // When that coroutine suspends, it'll then return control back to
         // the caller
 
-        return_t await_resume() {
+        result_t await_resume() {
             return result;
         }
     };
@@ -191,7 +194,7 @@ namespace eff::tasks {
         using base::await_ready;
         using base::await_suspend;
         using base::await_resume;
-        using base::return_t;
+        using base::result_t;
         using base::task_category;
     };
     template<task_type TaskA, flatmappable<TaskA> Func>
