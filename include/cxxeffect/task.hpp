@@ -16,7 +16,10 @@ namespace eff::tasks {
 
     // Obtains the result of mapping Func onto task
     template <class Func, class Task>
-    using map_result_t = std::invoke_result_t<Func, typename Task::return_type>;
+    using map_result_t = std::invoke_result_t<Func, typename Task::return_t>;
+
+    template <class Func, class Task>
+    using flatmap_result_t = typename map_result_t<Func, Task>::return_t;
 
     // Tasks have a task category that determines whether they're immediate,
     // or asynchronousy. If a task's type can't be determined at compile time,
@@ -140,8 +143,8 @@ namespace eff::tasks {
         // await_suspend is a no-op
         constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
-        using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
-        using return_t = typename TaskB::return_t;
+        using TaskB = map_result_t<Func, TaskA>;
+        using return_t = flatmap_result_t<Func, TaskA>;
         TaskA taskA;
         Func func;
 
