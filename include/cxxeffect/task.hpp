@@ -176,6 +176,23 @@ namespace eff {
         using base::task_category;
     };
 
+    // Takes (a -> b) -> Task a -> Task b
+    // This function maps a function onto a task, producing a new task
+    template <task_type Task, invocable<typename Task::return_t> Func>
+    task_type auto fmap(Func func, Task task) {
+        return map_task{task, func};
+    }
+
+    // Takes (() -> a) -> Task a
+    // This function takes a "thunk" (function with no inputs) and produces a task
+    task_type auto delay(invocable auto func) {
+        return lazy_task{func};
+    }
+
+    // Takes a value and produces a task
+    task_type auto pure(auto value) {
+        return pure_task { value };
+    }
 
     // This class represents a task that can be executed synchronously or
     // asynchronously, and produces a value
