@@ -14,6 +14,10 @@ namespace eff::tasks {
     using conduit::invocable;
     using conduit::same_as;
 
+    // Obtains the result of mapping Func onto task
+    template <class Func, class Task>
+    using map_result_t = std::invoke_result_t<Func, typename Task::return_type>;
+
     // Tasks have a task category that determines whether they're immediate,
     // or asynchronousy. If a task's type can't be determined at compile time,
     // it needs to by handled as async
@@ -29,6 +33,18 @@ namespace eff::tasks {
     template <class Task>
     concept task_type = hard_awaitable<Task, typename Task::return_t> && requires() {
         { Task::task_category } -> same_as<category_t>;
+    };
+
+    // Satisfied by functions that can be map`d on a given task
+    template <class Func, class Task>
+    concept mappable = invocable<Func, typename Task::return_t>;
+
+    // Satisfied by functions that can be flatmap'd on a given task
+    template <class Func, class Task>
+    concept flatmappable =
+        task_type<Task> &&
+        requires(typename Task::return_t input, Func f) {
+        { f(input) } -> task_type;
     };
 
 
@@ -89,12 +105,12 @@ namespace eff::tasks {
     // task that maps a function onto the output of a different task
     template <
         task_type Task,
-        // Specifies that Func must accept an input of type Task::return_t
-        invocable<typename Task::return_t> Func>
+        // Specifies that Func must be mappable on Task
+        mappable<Task> Func>
     struct map_task : Task {
         Func func;
 
-        using return_t = invoke_result_t<Func, typename Task::return_t>;
+        using return_t = map_result_t<Func, Task>;
         using Task::await_ready;
         using Task::await_suspend;
 
@@ -112,7 +128,7 @@ namespace eff::tasks {
     template <
         class TaskA,
         class Func,
-        category_t = deduce_task_category<TaskA, std::invoke_result_t<Func, typename TaskA::return_type>>>
+        category_t = deduce_task_category<TaskA, map_result_t<Func, TaskA>>>
     struct flatmap_impl;
 
     template <class TaskA, class Func>
@@ -165,7 +181,7 @@ namespace eff::tasks {
 
     template <
         task_type TaskA,
-        invocable<typename TaskA::return_t> Func>
+        flatmappable<TaskA> Func>
     struct flatmap_task : flatmap_impl<TaskA, Func> {
         using base = flatmap_impl<TaskA, Func>;
 
@@ -175,11 +191,13 @@ namespace eff::tasks {
         using base::return_t;
         using base::task_category;
     };
+    template<task_type TaskA, flatmappable<TaskA> Func>
+    flatmap_task(TaskA, Func) -> flatmap_task<TaskA, Func>;
 
     // Takes (a -> b) -> Task a -> Task b
     // This function maps a function onto a task, producing a new task
-    template <task_type Task, invocable<typename Task::return_t> Func>
-    task_type auto fmap(Func func, Task task) {
+    template <task_type Task, mappable<Task> Func>
+    task_type auto map(Func func, Task task) {
         return map_task{task, func};
     }
 
