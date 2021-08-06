@@ -17,7 +17,7 @@ namespace eff::tasks {
     // Tasks have a task category that determines whether they're immediate,
     // or asynchronousy. If a task's type can't be determined at compile time,
     // it needs to by handled as async
-    enum class task_category_t : bool {
+    enum class category_t : bool {
         // Immediate tasks return a value synchronously
         // (e.g pure task or lazy_task)
         immediate,
@@ -28,7 +28,7 @@ namespace eff::tasks {
     // A Task is an awaitable that has a return type specified by return_t
     template <class Task>
     concept task_type = hard_awaitable<Task, typename Task::return_t> && requires() {
-        { Task::task_category } -> same_as<task_category_t>;
+        { Task::task_category } -> same_as<category_t>;
     };
 
 
@@ -36,10 +36,10 @@ namespace eff::tasks {
     // if all the tasks in the set are immediate, but if any task is async
     // it results in an async task
     template <task_type... Tasks>
-    constexpr task_category_t deduce_task_category =
-        ((Tasks::task_category == task_category_t::immediate) && ...)
-        ? task_category_t::immediate
-        : task_category_t::async;
+    constexpr category_t deduce_task_category =
+        ((Tasks::task_category == category_t::immediate) && ...)
+        ? category_t::immediate
+        : category_t::async;
 
     // Task which doesn't suspend and simply returns a value it stores
     template <class Ret>
@@ -50,7 +50,7 @@ namespace eff::tasks {
         Ret value;
 
         // It's an immediate task since control is never transferred
-        constexpr static auto task_category = task_category_t::immediate;
+        constexpr static auto task_category = category_t::immediate;
         // No task switch needs to occur. The value is always ready.
         constexpr bool await_ready() const noexcept { return true; }
         // await_suspend is a no-op
@@ -72,7 +72,7 @@ namespace eff::tasks {
         using return_t = invoke_result_t<Func>;
 
         // It's an immediate task since control is never transferred
-        constexpr static auto task_category = task_category_t::immediate;
+        constexpr static auto task_category = category_t::immediate;
         // No task switch needs to occur. The value is always ready.
         constexpr bool await_ready() const noexcept { return true; }
         // await_suspend is a no-op
@@ -112,13 +112,13 @@ namespace eff::tasks {
     template <
         class TaskA,
         class Func,
-        task_category_t = deduce_task_category<TaskA, std::invoke_result_t<Func, typename TaskA::return_type>>>
+        category_t = deduce_task_category<TaskA, std::invoke_result_t<Func, typename TaskA::return_type>>>
     struct flatmap_impl;
 
     template <class TaskA, class Func>
-    struct flatmap_impl<TaskA, Func, task_category_t::immediate> {
+    struct flatmap_impl<TaskA, Func, category_t::immediate> {
         // It's an immediate task since control is never transferred
-        constexpr static auto task_category = task_category_t::immediate;
+        constexpr static auto task_category = category_t::immediate;
         // No task switch needs to occur. The value is always ready.
         constexpr bool await_ready() const noexcept { return true; }
         // await_suspend is a no-op
@@ -137,8 +137,8 @@ namespace eff::tasks {
         }
     };
     template <class TaskA, class Func>
-    struct flatmap_impl<TaskA, Func, task_category_t::async> {
-        constexpr static task_category_t task_category = task_category_t::async;
+    struct flatmap_impl<TaskA, Func, category_t::async> {
+        constexpr static category_t task_category = category_t::async;
         using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
         using return_t = typename TaskB::return_t;
         TaskA taskA;
