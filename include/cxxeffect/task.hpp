@@ -12,22 +12,53 @@ namespace eff {
     using std::invoke_result_t;
     using conduit::hard_awaitable;
     using conduit::invocable;
+    using conduit::same_as;
 
+    // Tasks have a task category that determines whether they're immediate,
+    // or asynchronousy. If a task's type can't be determined at compile time,
+    // it needs to by handled as async
+    enum class task_category_t : bool {
+        // Immediate tasks return a value synchronously
+        // (e.g pure task or lazy_task)
+        immediate,
+        // async tasks return a value asynchronously
+        async
+    };
 
     // A Task is an awaitable that has a return type specified by return_t
     template <class Task>
-    concept task_type = hard_awaitable<Task, typename Task::return_t>;
+    concept task_type = hard_awaitable<Task, typename Task::return_t> && requires() {
+        { Task::task_category } -> same_as<task_category_t>;
+    };
+
+
+    // Combining tasks (e.g, via flatmap) results in an immediate task
+    // if all the tasks in the set are immediate, but if any task is async
+    // it results in an async task
+    template <task_type... Tasks>
+    constexpr task_category_t deduce_task_category =
+        ((Tasks::task_category == task_category_t::immediate) && ...)
+        ? task_category_t::immediate
+        : task_category_t::async;
+
+
+    struct immediate_task : suspend_never {
+        using suspend_never::await_ready;
+        using suspend_never::await_suspend;
+        constexpr static auto task_category = task_category_t::immediate;
+    };
 
     // Task which doesn't suspend and simply returns a value it stores
     template <class Ret>
-    struct pure_task : suspend_never {
+    struct pure_task : immediate_task {
         // A pure task has the value ready immediately, so it
         // never needs to suspend. We use suspend_never as a mixin
         using return_t = Ret;
         Ret value;
 
-        using suspend_never::await_ready;
-        using suspend_never::await_suspend;
+        using immediate_task::await_ready;
+        using immediate_task::await_suspend;
+        using immediate_task::task_category;
 
         return_t await_resume() const {
             return value;
@@ -36,12 +67,13 @@ namespace eff {
 
     // Task that obtains it's result from a function invocation
     template <invocable Func>
-    struct lazy_task : suspend_never {
-        using return_t = invoke_result_t<Func>;
+    struct lazy_task : immediate_task {
         Func func;
 
-        using suspend_never::await_ready;
-        using suspend_never::await_suspend;
+        using return_t = invoke_result_t<Func>;
+        using immediate_task::await_ready;
+        using immediate_task::await_suspend;
+        using immediate_task::task_category;
 
         return_t await_resume() const {
             return func();
@@ -61,39 +93,50 @@ namespace eff {
         using Task::await_ready;
         using Task::await_suspend;
 
+        // When you map a function on a task, it's category is the same as
+        // the category of the task it's derived from
+        using Task::task_category;
+
         return_t await_resume() const {
             return func(Task::await_resume());
         }
     };
-    template <
-        task_type TaskA,
-        invocable<typename TaskA::return_t> Func>
-    struct flatmap_task {
-        using TaskB = invoke_result_t<Func, typename TaskA::return_t>;
 
-        static_assert(task_type<TaskB>, "The function given to flatmap needs to return a task");
-        // return_t is the return type of the task returned by func
+    template <
+        class TaskA,
+        class Func,
+        task_category_t = deduce_task_category<TaskA, std::invoke_result_t<Func, typename TaskA::return_type>>>
+    struct flatmap_impl;
+
+    template <class TaskA, class Func>
+    struct flatmap_impl<TaskA, Func, task_category_t::immediate> : immediate_task {
+        using immediate_task::await_ready;
+        using immediate_task::await_suspend;
+        using immediate_task::task_category;
+        using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
         using return_t = typename TaskB::return_t;
         TaskA taskA;
         Func func;
 
-        bool taskA_ready = false;
-        bool taskB_ready = false;
-        TaskB taskB;
-        return_t return_value;
+        // Because it's an immediate task, we can obtain the value directly
+        // simply by calling await_resume on taskA, passing that to func to
+        // generate taskB, and then calling await_resume() on task B
+        return_t await_resume() const {
+            return func(taskA.await_resume()).await_resume();
+        }
+    };
+    template <class TaskA, class Func>
+    struct flatmap_impl<TaskA, Func, task_category_t::async> {
+        constexpr static task_category_t task_category = task_category_t::async;
+        using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
+        using return_t = typename TaskB::return_t;
+        TaskA taskA;
+        Func func;
 
-        bool await_ready() {
-            if((taskA_ready = taskA.await_ready())) {
-                taskB = func(taskA.await_resume());
-                if((taskB_ready = taskB.await_ready())) {
-                    return_value = taskB.await_resume();
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
+        return_t result;
+        // We always suspend the calling coroutine for async tasks
+        constexpr bool await_ready() const noexcept {
+            return false;
         }
 
         // To-do: write await_suspend (contains non-trivial logic)
@@ -105,8 +148,21 @@ namespace eff {
         // the caller
 
         return_t await_resume() {
-            return return_value;
+            return result;
         }
+    };
+
+    template <
+        task_type TaskA,
+        invocable<typename TaskA::return_t> Func>
+    struct flatmap_task : flatmap_impl<TaskA, Func> {
+        using base = flatmap_impl<TaskA, Func>;
+
+        using base::await_ready;
+        using base::await_suspend;
+        using base::await_resume;
+        using base::return_t;
+        using base::task_category;
     };
 
 
