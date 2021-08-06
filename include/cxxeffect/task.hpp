@@ -5,7 +5,7 @@
 
 #include <conduit/util/concepts.hpp>
 
-namespace eff {
+namespace eff::tasks {
     using std::coroutine_handle;
     using std::suspend_never;
     using std::suspend_always;
@@ -193,6 +193,12 @@ namespace eff {
     task_type auto pure(auto value) {
         return pure_task { value };
     }
+}
+namespace eff {
+    using conduit::hard_awaitable;
+    using conduit::invocable;
+    using conduit::same_as;
+    using std::invoke_result_t;
 
     // This class represents a task that can be executed synchronously or
     // asynchronously, and produces a value
