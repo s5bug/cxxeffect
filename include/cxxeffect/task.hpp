@@ -41,44 +41,49 @@ namespace eff {
         ? task_category_t::immediate
         : task_category_t::async;
 
-
-    struct immediate_task : suspend_never {
-        using suspend_never::await_ready;
-        using suspend_never::await_suspend;
-        constexpr static auto task_category = task_category_t::immediate;
-    };
-
     // Task which doesn't suspend and simply returns a value it stores
     template <class Ret>
-    struct pure_task : immediate_task {
-        // A pure task has the value ready immediately, so it
-        // never needs to suspend. We use suspend_never as a mixin
+    struct pure_task {
+
         using return_t = Ret;
+
         Ret value;
 
-        using immediate_task::await_ready;
-        using immediate_task::await_suspend;
-        using immediate_task::task_category;
+        // It's an immediate task since control is never transferred
+        constexpr static auto task_category = task_category_t::immediate;
+        // No task switch needs to occur. The value is always ready.
+        constexpr bool await_ready() const noexcept { return true; }
+        // await_suspend is a no-op
+        constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
         return_t await_resume() const {
             return value;
         }
     };
+    template <class Value>
+    pure_task(Value value) -> pure_task<Value>;
 
     // Task that obtains it's result from a function invocation
     template <invocable Func>
-    struct lazy_task : immediate_task {
+    struct lazy_task {
         Func func;
 
+        // The return type of a lazy task is the same as the type returned by func()
         using return_t = invoke_result_t<Func>;
-        using immediate_task::await_ready;
-        using immediate_task::await_suspend;
-        using immediate_task::task_category;
+
+        // It's an immediate task since control is never transferred
+        constexpr static auto task_category = task_category_t::immediate;
+        // No task switch needs to occur. The value is always ready.
+        constexpr bool await_ready() const noexcept { return true; }
+        // await_suspend is a no-op
+        constexpr void await_suspend(coroutine_handle<>) const noexcept {}
 
         return_t await_resume() const {
             return func();
         }
     };
+    template <invocable Func>
+    lazy_task(Func func) -> lazy_task<Func>;
 
 
     // task that maps a function onto the output of a different task
@@ -101,6 +106,8 @@ namespace eff {
             return func(Task::await_resume());
         }
     };
+    template <task_type Task, invocable<typename Task::return_t> Func>
+    map_task(Task task, Func func) -> map_task<Task, Func>;
 
     template <
         class TaskA,
@@ -109,10 +116,14 @@ namespace eff {
     struct flatmap_impl;
 
     template <class TaskA, class Func>
-    struct flatmap_impl<TaskA, Func, task_category_t::immediate> : immediate_task {
-        using immediate_task::await_ready;
-        using immediate_task::await_suspend;
-        using immediate_task::task_category;
+    struct flatmap_impl<TaskA, Func, task_category_t::immediate> {
+        // It's an immediate task since control is never transferred
+        constexpr static auto task_category = task_category_t::immediate;
+        // No task switch needs to occur. The value is always ready.
+        constexpr bool await_ready() const noexcept { return true; }
+        // await_suspend is a no-op
+        constexpr void await_suspend(coroutine_handle<>) const noexcept {}
+
         using TaskB = std::invoke_result_t<Func, typename TaskA::return_type>;
         using return_t = typename TaskB::return_t;
         TaskA taskA;
