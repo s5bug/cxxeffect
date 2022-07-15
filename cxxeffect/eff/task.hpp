@@ -50,6 +50,11 @@ namespace eff {
             // TODO
         }
 
+        template<typename B>
+        task<std::variant<std::pair<A, fiber<B>>, std::pair<fiber<A>, B>>> race(task<B>) {
+            // TODO
+        }
+
     };
 
     template<typename A>
@@ -58,7 +63,7 @@ namespace eff {
     }
 
     template<typename A>
-    task<A> sync(auto f) requires
+    task<A> delay(auto f) requires
         std::regular_invocable<decltype(f)> &&
         std::convertible_to<std::invoke_result_t<decltype(f)>, A> {
         // TODO
@@ -84,7 +89,7 @@ namespace eff {
         std::convertible_to<std::invoke_result_t<decltype(f), callback<A>>, void> {
         // FIXME
         return async<A>([f](callback<A> cb) {
-            task<top> fire = sync<top>([f, cb]() {
+            task<top> fire = delay<top>([f, cb]() {
                 f(cb);
                 return top();
             });
@@ -116,8 +121,22 @@ namespace eff {
     public:
         template<typename B>
         task<B> use(auto f) requires
-        std::regular_invocable<decltype(f), A> &&
-        std::convertible_to<std::invoke_result_t<decltype(f), A>, task<B>> {
+            std::regular_invocable<decltype(f), A> &&
+            std::convertible_to<std::invoke_result_t<decltype(f), A>, task<B>> {
+            // TODO
+        }
+
+        template<typename B>
+        resource<B> map(auto f) requires
+            std::regular_invocable<decltype(f), A> &&
+            std::convertible_to<std::invoke_result_t<decltype(f), A>, B> {
+            // TODO
+        }
+
+        template<typename B>
+        resource<B> flatMap(auto f) requires
+            std::regular_invocable<decltype(f), A> &&
+            std::convertible_to<std::invoke_result_t<decltype(f), A>, resource<B>> {
             // TODO
         }
     };

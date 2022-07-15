@@ -4,7 +4,7 @@
 #include <eff.hpp>
 
 eff::task<eff::top> print(std::string s) {
-    return eff::sync<eff::top>([s]() {
+    return eff::delay<eff::top>([s]() {
         std::printf("%s\n", s.c_str());
         return eff::top();
     });
