@@ -2,13 +2,13 @@
 
 ## api goals
 
-| type          | explanation                                         |
-|---------------|-----------------------------------------------------|
-| `⊥`           | bottom/empty/never type. cannot be created lawfully |
-| `⊤`           | top/unit/void type. all instances are equal         |
-| `α + β`       | either `α` or `β`                                   |
-| `α × β`       | both `α` and `β`                                    |
-| `callback<α>` | `(exception + α) → ⊤`                               |
+| type          | explanation                                                 |
+|---------------|-------------------------------------------------------------|
+| `⊥`           | bottom/empty/never type. cannot be created lawfully         |
+| `⊤`           | top/unit/void type. all instances are equal to `eff::top()` |
+| `α + β`       | either `α` or `β`                                           |
+| `α × β`       | both `α` and `β`                                            |
+| `callback<α>` | `(exception + α) → ⊤`                                       |
 
 ### `task`
 
