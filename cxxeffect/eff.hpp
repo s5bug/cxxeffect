@@ -5,6 +5,8 @@
 #ifndef CXXEFFECT_EFF_HPP
 #define CXXEFFECT_EFF_HPP
 
+#include <stdexcept>
+
 namespace eff {
     struct top {
         top() = default;
@@ -22,7 +24,9 @@ namespace eff {
     };
 
     template<typename A>
-    A absurd(const bot& bot) { return *reinterpret_cast<const A*>(&bot); }
+    A absurd(const bot& bot) {
+        throw std::invalid_argument("eff::absurd called");
+    }
 }
 
 #include "./eff/task.hpp"
