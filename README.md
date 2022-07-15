@@ -14,19 +14,19 @@
 
 Represents a program with a specific result type.
 
-| function   | type                                                    |
-|------------|---------------------------------------------------------|
-| `async`    | `(callback<α> → task<option<task<⊤>>>) → task<α>`       |
-| `async_`   | `(callback<α> → ⊤) → task<α>`                           |
-| `blocking` | `(⊤ → α) → task<α>`                                     |
-| `delay`    | `(⊤ → α) → task<α>`                                     |
-| `never`    | `task<⊥>`                                               |
-| `pure`     | `α → task<α>`                                           |
-| `as`       | `task<α> → β → task<β>`                                 |
-| `flatMap`  | `task<α> → (α → task<β>) → task<β>`                     |
-| `map`      | `task<α> → (α → β) → task<β>`                           |
-| `race`     | `task<α> → task<β> → ((α × fiber<β>) + (fiber<α> × β))` |
-| `start`    | `task<α> → task<fiber<α>>`                              |
+| function   | type                                                        |
+|------------|-------------------------------------------------------------|
+| `async`    | `(callback<α> → task<option<task<⊤>>>) → task<α>`           |
+| `async_`   | `(callback<α> → ⊤) → task<α>`                               |
+| `blocking` | `(⊤ → α) → task<α>`                                         |
+| `delay`    | `(⊤ → α) → task<α>`                                         |
+| `never`    | `task<⊥>`                                                   |
+| `pure`     | `α → task<α>`                                               |
+| `as`       | `task<α> → β → task<β>`                                     |
+| `flatMap`  | `task<α> → (α → task<β>) → task<β>`                         |
+| `map`      | `task<α> → (α → β) → task<β>`                               |
+| `race`     | `task<α> → task<β> → task<(α × fiber<β>) + (fiber<α> × β)>` |
+| `start`    | `task<α> → task<fiber<α>>`                                  |
 
 ### `fiber`
 
