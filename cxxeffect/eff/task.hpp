@@ -23,6 +23,9 @@ namespace eff {
     using callback = std::function<void (std::variant<std::exception, A>)>;
 
     template<typename A>
+    using outcome = std::variant<top, std::exception, A>;
+
+    template<typename A>
     class task final {
 
     public:
@@ -101,6 +104,15 @@ namespace eff {
         return async_<bot>([](const callback<bot>&) {});
     }
 
+    template<typename A, typename B>
+    task<B> bracket(task<A> acquire, auto use, auto release) requires
+        std::regular_invocable<decltype(use), A> &&
+        std::convertible_to<std::invoke_result_t<decltype(use), A>, task<B>> &&
+        std::regular_invocable<decltype(release), A, outcome<B>> &&
+        std::convertible_to<std::invoke_result_t<decltype(release), A, outcome<B>>, task<top>> {
+        // TODO
+    }
+
     template<typename A>
     class fiber final {
 
@@ -109,7 +121,7 @@ namespace eff {
             // TODO
         }
 
-        task<A> join() {
+        task<outcome<A>> join() {
             // TODO
         }
 
@@ -124,6 +136,7 @@ namespace eff {
             std::regular_invocable<decltype(f), A> &&
             std::convertible_to<std::invoke_result_t<decltype(f), A>, task<B>> {
             // TODO
+            // bracket(???, f, ???)
         }
 
         template<typename B>
