@@ -22,6 +22,7 @@ Represents a program with a specific result type.
 | `async_`       | `(callback<α> → ⊤) → task<α>`                                    |
 | `blocking`     | `(⊤ → α) → task<α>`                                              |
 | `bracket`      | `task<α> → (α → task<β>) → (α → outcome<β> → task<⊤>) → task<β>` |
+| `canceled`     | `task<⊤>`                                                        |
 | `delay`        | `(⊤ → α) → task<α>`                                              |
 | `never`        | `task<⊥>`                                                        |
 | `pure`         | `α → task<α>`                                                    |

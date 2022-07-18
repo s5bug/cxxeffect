@@ -114,6 +114,10 @@ namespace eff {
         // TODO
     }
 
+    task<top> canceled() {
+        // TODO
+    }
+
     template<typename A>
     task<A> uncancelable(auto f) requires
         std::regular_invocable<decltype(f), poll> &&
