@@ -13,6 +13,7 @@
 namespace eff {
     template<typename A> class task;
     template<typename A> class fiber;
+    class poll;
     template<typename A> class resource;
     class dispatcher;
 }
@@ -50,11 +51,6 @@ namespace eff {
         }
 
         task<fiber<A>> start() {
-            // TODO
-        }
-
-        template<typename B>
-        task<std::variant<std::pair<A, fiber<B>>, std::pair<fiber<A>, B>>> race(task<B>) {
             // TODO
         }
 
@@ -105,11 +101,23 @@ namespace eff {
     }
 
     template<typename A, typename B>
+    task<std::variant<std::pair<A, fiber<B>>, std::pair<fiber<A>, B>>> race(task<A> left, task<B> right) {
+        // TODO
+    }
+
+    template<typename A, typename B>
     task<B> bracket(task<A> acquire, auto use, auto release) requires
         std::regular_invocable<decltype(use), A> &&
         std::convertible_to<std::invoke_result_t<decltype(use), A>, task<B>> &&
         std::regular_invocable<decltype(release), A, outcome<B>> &&
         std::convertible_to<std::invoke_result_t<decltype(release), A, outcome<B>>, task<top>> {
+        // TODO
+    }
+
+    template<typename A>
+    task<A> uncancelable(auto f) requires
+        std::regular_invocable<decltype(f), poll> &&
+        std::convertible_to<std::invoke_result_t<decltype(f), poll>, task<A>> {
         // TODO
     }
 
@@ -125,6 +133,15 @@ namespace eff {
             // TODO
         }
 
+    };
+
+    class poll final {
+
+    public:
+        template<typename A>
+        task<A> operator()(task<A>) {
+            // TODO
+        }
     };
 
     template<typename A>

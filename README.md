@@ -2,33 +2,35 @@
 
 ## api goals
 
-| type          | explanation                                                         |
-|---------------|---------------------------------------------------------------------|
-| `⊥`           | bottom/empty/never type. cannot be created lawfully                 |
-| `⊤`           | top/unit/void type. all instances are equal to `eff::top()`         |
-| `α + β`       | either `α` or `β`                                                   |
-| `α × β`       | both `α` and `β`                                                    |
+| type          | explanation |
+|---------------|--|
+| `⊥`           | bottom/empty/never type. cannot be created lawfully |
+| `⊤`           | top/unit/void type. all instances are equal to `eff::top()` |
+| `α + β`       | either `α` or `β` |
+| `α × β`       | both `α` and `β` |
 | `callback<α>` | `(exception + α) → ⊤`, a callback that accepts a failure or success |
-| `outcome<α>`  | `⊤ + exception + α`, either cancelled (`⊤`), errored, or completed  |
+| `outcome<α>`  | `⊤ + exception + α`, either cancelled (`⊤`), errored, or completed |
+| `poll`        | a polymorphic `(A : Type) → task<A> → task<A>` |
 
 ### `task`
 
 Represents a program with a specific result type.
 
-| function   | type                                                             |
-|------------|------------------------------------------------------------------|
-| `async`    | `(callback<α> → task<option<task<⊤>>>) → task<α>`                |
-| `async_`   | `(callback<α> → ⊤) → task<α>`                                    |
-| `blocking` | `(⊤ → α) → task<α>`                                              |
-| `bracket`  | `task<α> → (α → task<β>) → (α → outcome<β> → task<⊤>) → task<β>` |
-| `delay`    | `(⊤ → α) → task<α>`                                              |
-| `never`    | `task<⊥>`                                                        |
-| `pure`     | `α → task<α>`                                                    |
-| `as`       | `task<α> → β → task<β>`                                          |
-| `flatMap`  | `task<α> → (α → task<β>) → task<β>`                              |
-| `map`      | `task<α> → (α → β) → task<β>`                                    |
-| `race`     | `task<α> → task<β> → task<(α × fiber<β>) + (fiber<α> × β)>`      |
-| `start`    | `task<α> → task<fiber<α>>`                                       |
+| function       | type                                                             |
+|----------------|------------------------------------------------------------------|
+| `async`        | `(callback<α> → task<option<task<⊤>>>) → task<α>`                |
+| `async_`       | `(callback<α> → ⊤) → task<α>`                                    |
+| `blocking`     | `(⊤ → α) → task<α>`                                              |
+| `bracket`      | `task<α> → (α → task<β>) → (α → outcome<β> → task<⊤>) → task<β>` |
+| `delay`        | `(⊤ → α) → task<α>`                                              |
+| `never`        | `task<⊥>`                                                        |
+| `pure`         | `α → task<α>`                                                    |
+| `race`         | `task<α> → task<β> → task<(α × fiber<β>) + (fiber<α> × β)>`      |
+| `as`           | `task<α> → β → task<β>`                                          |
+| `flatMap`      | `task<α> → (α → task<β>) → task<β>`                              |
+| `map`          | `task<α> → (α → β) → task<β>`                                    |
+| `start`        | `task<α> → task<fiber<α>>`                                       |
+| `uncancelable` | `(poll → task<α>) → task<α>`                                     |
 
 ### `fiber`
 
