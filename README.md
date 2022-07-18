@@ -26,11 +26,11 @@ Represents a program with a specific result type.
 | `never`        | `task<⊥>`                                                        |
 | `pure`         | `α → task<α>`                                                    |
 | `race`         | `task<α> → task<β> → task<(α × fiber<β>) + (fiber<α> × β)>`      |
+| `uncancelable` | `(poll → task<α>) → task<α>`                                     |
 | `as`           | `task<α> → β → task<β>`                                          |
 | `flatMap`      | `task<α> → (α → task<β>) → task<β>`                              |
 | `map`          | `task<α> → (α → β) → task<β>`                                    |
 | `start`        | `task<α> → task<fiber<α>>`                                       |
-| `uncancelable` | `(poll → task<α>) → task<α>`                                     |
 
 ### `fiber`
 
